@@ -12,6 +12,10 @@ const products: Product[] = [
   { id: "2", name: "كوب الموجة الذهبي", category: "هدايا", price: "129 ج.م", description: "كوب سيراميك بلون دافئ يحوّل قهوتك الصباحية إلى لحظة أجمل.", image: "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=700&q=85", accent: "#FFD9D0" },
   { id: "3", name: "مجموعة glow الصغيرة", category: "عناية", price: "189 ج.م", description: "روتين عناية مختصر بثلاث خطوات لانتعاش يومي سريع.", image: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=700&q=85", accent: "#D7F2E3" },
   { id: "4", name: "سوار نقطة ضوء", category: "إكسسوارات", price: "99 ج.م", description: "قطعة بسيطة تضيف لمعة لطيفة لأي إطلالة، وحدها أو مع غيرها.", image: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=700&q=85", accent: "#E7DEFF" },
+  { id: "5", name: "عطر wm الصباحي", category: "عناية", price: "159 ج.م", description: "رائحة خفيفة ومنعشة تبدأ يومك بطاقة حلوة وتناسب كل الأوقات.", image: "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=700&q=85", accent: "#FBE1B7" },
+  { id: "6", name: "دفتر لحظة", category: "هدايا", price: "79 ج.م", description: "دفتر أنيق للأفكار والخطط الصغيرة التي تستاهل تتحفظ.", image: "https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=700&q=85", accent: "#DDE9FF" },
+  { id: "7", name: "محفظة wm الصغيرة", category: "إكسسوارات", price: "119 ج.م", description: "حجم صغير وتنظيم كبير؛ خذ معك الأساسيات بكل أناقة.", image: "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=700&q=85", accent: "#EBD9CC" },
+  { id: "8", name: "شمعة سكر وفانيلا", category: "هدايا", price: "109 ج.م", description: "شمعة برائحة دافئة تضيف هدوءًا ولمسة جميلة لأي ركن.", image: "https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=700&q=85", accent: "#F5D8D8" },
 ];
 
 function ProductCard({ product, onOpen }: { product: Product; onOpen: () => void }) {
