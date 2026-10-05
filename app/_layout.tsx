@@ -1,8 +1,8 @@
 import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, usePathname, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform } from "react-native";
@@ -18,6 +18,7 @@ import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
+import { useAuth } from "@/hooks/use-auth";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -27,6 +28,10 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { isAuthenticated, loading, refresh } = useAuth({ autoFetch: true });
+  const retriedPath = useRef<string | null>(null);
   const initialInsets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
   const initialFrame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
 
@@ -48,6 +53,24 @@ export default function RootLayout() {
     const unsubscribe = subscribeSafeAreaInsets(handleSafeAreaUpdate);
     return () => unsubscribe();
   }, [handleSafeAreaUpdate]);
+
+  useEffect(() => {
+    if (pathname.startsWith("/oauth")) {
+      retriedPath.current = null;
+      return;
+    }
+    if (loading) return;
+    const onLogin = pathname === "/login";
+    if (!isAuthenticated && !onLogin) {
+      if (retriedPath.current !== pathname) {
+        retriedPath.current = pathname;
+        void refresh();
+        return;
+      }
+      router.replace("/login");
+    }
+    if (isAuthenticated && onLogin) router.replace("/(tabs)");
+  }, [isAuthenticated, loading, pathname, refresh, router]);
 
   // Create clients once and reuse them
   const [queryClient] = useState(
@@ -87,6 +110,7 @@ export default function RootLayout() {
           {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="login" />
             <Stack.Screen name="oauth/callback" />
           </Stack>
           <StatusBar style="auto" />

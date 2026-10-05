@@ -66,7 +66,6 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
     console.log("[API] Text response received");
     return (text ? JSON.parse(text) : {}) as T;
   } catch (error) {
-    console.error("[API] Request failed");
     if (error instanceof Error) {
       throw error;
     }
@@ -117,7 +116,7 @@ export async function getMe(): Promise<{
     const result = await apiCall<{ user: any }>("/api/auth/me");
     return result.user || null;
   } catch {
-    console.error("[API] getMe failed");
+    // A logged-out visitor is expected to receive 401 here; keep the login screen clean.
     return null;
   }
 }
