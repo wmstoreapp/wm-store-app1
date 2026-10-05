@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase } from "@/lib/supabase";
 
 export type Product = { id: string; name: string; category: string; price: string; description: string; image: string; accent: string; discount: number };
 
@@ -14,6 +15,29 @@ export const DEFAULT_PRODUCTS: Product[] = [
 ];
 
 const KEY = "wm_catalog_products";
-export async function loadProducts(): Promise<Product[]> { try { const raw = await AsyncStorage.getItem(KEY); return raw ? JSON.parse(raw) : DEFAULT_PRODUCTS; } catch { return DEFAULT_PRODUCTS; } }
+function fromSupabaseRow(row: { id: string; name: string; category: string; description: string; price: number | string; discount: number | string; image_url: string; accent: string }): Product {
+  return {
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    description: row.description ?? "",
+    price: `${Number(row.price)} ج.م`,
+    discount: Number(row.discount ?? 0),
+    image: row.image_url ?? "",
+    accent: row.accent ?? "#FFE7B3",
+  };
+}
+
+export async function loadProducts(): Promise<Product[]> {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, name, category, description, price, discount, image_url, accent")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+    if (!error && data?.length) return data.map(fromSupabaseRow);
+  }
+  try { const raw = await AsyncStorage.getItem(KEY); return raw ? JSON.parse(raw) : DEFAULT_PRODUCTS; } catch { return DEFAULT_PRODUCTS; }
+}
 export async function saveProducts(products: Product[]): Promise<void> { await AsyncStorage.setItem(KEY, JSON.stringify(products)); }
 export function discountedPrice(product: Product): string { const match = product.price.match(/[0-9]+(?:\.[0-9]+)?/); if (!match || !product.discount) return product.price; const value = Number(match[0]) * (1 - product.discount / 100); return `${Math.round(value)} ج.م`; }
