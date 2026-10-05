@@ -5,9 +5,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { SchemeColors, type ColorScheme } from "@/constants/theme";
 
+export type ThemePreference = "light" | "dark" | "system";
+
 type ThemeContextValue = {
   colorScheme: ColorScheme;
-  setColorScheme: (scheme: ColorScheme) => void;
+  preference: ThemePreference;
+  setColorScheme: (scheme: ThemePreference) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -15,7 +18,8 @@ const THEME_KEY = "wm_theme_preference";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useSystemColorScheme() === "dark" ? "dark" : "light";
-  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(systemScheme);
+  const [preference, setPreference] = useState<ThemePreference>("system");
+  const colorScheme: ColorScheme = preference === "system" ? systemScheme : preference;
 
   const applyScheme = useCallback((scheme: ColorScheme) => {
     nativewindColorScheme.set(scheme);
@@ -31,15 +35,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const setColorScheme = useCallback((scheme: ColorScheme) => {
-    setColorSchemeState(scheme);
-    applyScheme(scheme);
+  const setColorScheme = useCallback((scheme: ThemePreference) => {
+    setPreference(scheme);
+    applyScheme(scheme === "system" ? systemScheme : scheme);
     AsyncStorage.setItem(THEME_KEY, scheme).catch(() => undefined);
-  }, [applyScheme]);
+  }, [applyScheme, systemScheme]);
 
   useEffect(() => {
     AsyncStorage.getItem(THEME_KEY).then((saved) => {
-      if (saved === "light" || saved === "dark") setColorSchemeState(saved);
+      if (saved === "light" || saved === "dark" || saved === "system") setPreference(saved);
     }).catch(() => undefined);
   }, []);
 
@@ -64,11 +68,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({
-      colorScheme,
-      setColorScheme,
-    }),
-    [colorScheme, setColorScheme],
+    () => ({ colorScheme, preference, setColorScheme }),
+    [colorScheme, preference, setColorScheme],
   );
 
   return (
