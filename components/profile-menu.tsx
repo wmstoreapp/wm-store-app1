@@ -32,6 +32,7 @@ export function ProfileMenu({ compact = false }: ProfileMenuProps) {
 
   const close = () => setVisible(false);
   const openSettings = () => { close(); router.push("/(tabs)/settings"); };
+  const openAdmin = () => { close(); router.push("/admin"); };
   const support = () => { close(); Linking.openURL(`https://wa.me/${SUPPORT_NUMBER}?text=${encodeURIComponent("مرحباً wm، أحتاج مساعدة")}`); };
   const signOut = async () => { setBusy(true); await logout(); setBusy(false); close(); router.replace("/login"); };
 
@@ -52,6 +53,7 @@ export function ProfileMenu({ compact = false }: ProfileMenuProps) {
             <View style={styles.menuList}>
               <MenuItem icon="◉" label="حسابي" onPress={openSettings} />
               <MenuItem icon="◐" label="إعدادات الواجهة" onPress={openSettings} />
+              <MenuItem icon="◆" label="للإدارة فقط" onPress={openAdmin} />
               <MenuItem icon="◌" label="تواصل مع الدعم" onPress={support} />
               <MenuItem icon="?" label="الاستفسار والمساعدة" onPress={support} />
             </View>

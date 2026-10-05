@@ -1,24 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { ProfileMenu } from "@/components/profile-menu";
 import { useThemeContext } from "@/lib/theme-provider";
+import { discountedPrice, loadProducts, type Product } from "@/lib/catalog";
 
-type Product = { id: string; name: string; category: string; price: string; description: string; image: string; accent: string };
-
-// استبدل الرقم برقم واتساب المتجر بصيغة دولية دون علامة +.
 const WHATSAPP_NUMBER = "201095314107";
 const categories = ["الكل", "إكسسوارات", "عناية", "هدايا"];
-const products: Product[] = [
-  { id: "1", name: "حقيبة wm اليومية", category: "إكسسوارات", price: "249 ج.م", description: "تصميم عملي وخفيف، مناسب لكل مشاويرك اليومية بلمسة أنيقة.", image: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=700&q=85", accent: "#FFE7B3" },
-  { id: "2", name: "كوب الموجة الذهبي", category: "هدايا", price: "129 ج.م", description: "كوب سيراميك بلون دافئ يحوّل قهوتك الصباحية إلى لحظة أجمل.", image: "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=700&q=85", accent: "#FFD9D0" },
-  { id: "3", name: "مجموعة glow الصغيرة", category: "عناية", price: "189 ج.م", description: "روتين عناية مختصر بثلاث خطوات لانتعاش يومي سريع.", image: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=700&q=85", accent: "#D7F2E3" },
-  { id: "4", name: "سوار نقطة ضوء", category: "إكسسوارات", price: "99 ج.م", description: "قطعة بسيطة تضيف لمعة لطيفة لأي إطلالة، وحدها أو مع غيرها.", image: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=700&q=85", accent: "#E7DEFF" },
-  { id: "5", name: "عطر wm الصباحي", category: "عناية", price: "159 ج.م", description: "رائحة خفيفة ومنعشة تبدأ يومك بطاقة حلوة وتناسب كل الأوقات.", image: "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=700&q=85", accent: "#FBE1B7" },
-  { id: "6", name: "دفتر لحظة", category: "هدايا", price: "79 ج.م", description: "دفتر أنيق للأفكار والخطط الصغيرة التي تستاهل تتحفظ.", image: "https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=700&q=85", accent: "#DDE9FF" },
-  { id: "7", name: "محفظة wm الصغيرة", category: "إكسسوارات", price: "119 ج.م", description: "حجم صغير وتنظيم كبير؛ خذ معك الأساسيات بكل أناقة.", image: "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=700&q=85", accent: "#EBD9CC" },
-  { id: "8", name: "شمعة سكر وفانيلا", category: "هدايا", price: "109 ج.م", description: "شمعة برائحة دافئة تضيف هدوءًا ولمسة جميلة لأي ركن.", image: "https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=700&q=85", accent: "#F5D8D8" },
-];
 
 function ProductCard({ product, onOpen, dark }: { product: Product; onOpen: () => void; dark: boolean }) {
   return (
@@ -31,7 +19,7 @@ function ProductCard({ product, onOpen, dark }: { product: Product; onOpen: () =
         <Text style={styles.productCategory}>{product.category}</Text>
         <Text style={[styles.productName, dark && styles.darkText]} numberOfLines={1}>{product.name}</Text>
         <View style={styles.productBottomRow}>
-          <Text style={[styles.productPrice, dark && styles.darkText]}>{product.price}</Text>
+          <Text style={[styles.productPrice, dark && styles.darkText]}>{discountedPrice(product)}</Text>
           <View style={styles.cardArrow}><Text style={styles.cardArrowText}>↗</Text></View>
         </View>
       </View>
@@ -41,6 +29,8 @@ function ProductCard({ product, onOpen, dark }: { product: Product; onOpen: () =
 
 export default function HomeScreen() {
   const { colorScheme } = useThemeContext();
+  const [products, setProducts] = useState<Product[]>([]);
+  useEffect(() => { loadProducts().then(setProducts); }, []);
   const dark = colorScheme === "dark";
   const [selectedCategory, setSelectedCategory] = useState("الكل");
   const [search, setSearch] = useState("");
@@ -51,7 +41,7 @@ export default function HomeScreen() {
     return products.filter((product) => (selectedCategory === "الكل" || product.category === selectedCategory) && (!query || product.name.toLowerCase().includes(query)));
   }, [search, selectedCategory]);
   const orderOnWhatsApp = async (product: Product) => {
-    const message = `مرحباً wm، أريد طلب: ${product.name} بسعر ${product.price}`;
+    const message = `مرحباً wm، أريد طلب: ${product.name} بسعر ${discountedPrice(product)}`;
     const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
     try { await Linking.openURL(whatsappUrl); } catch { setToast("تعذر فتح واتساب. تأكد من تثبيته على جهازك."); setTimeout(() => setToast(""), 3200); }
   };
@@ -78,7 +68,7 @@ export default function HomeScreen() {
       </ScrollView>
       <Modal visible={Boolean(selectedProduct)} animationType="slide" transparent onRequestClose={() => setSelectedProduct(null)}>
         <View style={styles.modalBackdrop}><View style={[styles.modalCard, dark && styles.darkCard]}><Pressable onPress={() => setSelectedProduct(null)} style={styles.closeButton}><Text style={styles.closeButtonText}>×</Text></Pressable>
-          {selectedProduct && <><Image source={{ uri: selectedProduct.image }} style={styles.modalImage} /><Text style={styles.modalCategory}>{selectedProduct.category}</Text><Text style={[styles.modalTitle, dark && styles.darkText]}>{selectedProduct.name}</Text><Text style={[styles.modalDescription, dark && styles.darkSecondary]}>{selectedProduct.description}</Text><View style={styles.modalFooter}><Text style={[styles.modalPrice, dark && styles.darkText]}>{selectedProduct.price}</Text><Pressable onPress={() => orderOnWhatsApp(selectedProduct)} style={({ pressed }) => [styles.buyButton, { opacity: pressed ? 0.8 : 1 }]}><Text style={styles.buyButtonText}>الدفع الآن ↗</Text></Pressable></View></>}
+          {selectedProduct && <><Image source={{ uri: selectedProduct.image }} style={styles.modalImage} /><Text style={styles.modalCategory}>{selectedProduct.category}</Text><Text style={[styles.modalTitle, dark && styles.darkText]}>{selectedProduct.name}</Text><Text style={[styles.modalDescription, dark && styles.darkSecondary]}>{selectedProduct.description}</Text><View style={styles.modalFooter}><Text style={[styles.modalPrice, dark && styles.darkText]}>{discountedPrice(selectedProduct)}</Text><Pressable onPress={() => orderOnWhatsApp(selectedProduct)} style={({ pressed }) => [styles.buyButton, { opacity: pressed ? 0.8 : 1 }]}><Text style={styles.buyButtonText}>الدفع الآن ↗</Text></Pressable></View></>}
         </View></View>
       </Modal>
       {toast ? <View style={styles.toast}><Text style={styles.toastText}>{toast}</Text></View> : null}

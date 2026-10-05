@@ -111,6 +111,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="login" />
+            <Stack.Screen name="admin" />
             <Stack.Screen name="oauth/callback" />
           </Stack>
           <StatusBar style="auto" />
