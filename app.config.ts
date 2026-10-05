@@ -31,7 +31,7 @@ const env = {
   appName: "wm Store",
   appSlug: "wmstore",
   // Durable project-logo metadata for the wm brand.
-  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519664000353225/rrXHWxlpCBnsJhJx.png",
+  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519664000353225/ltpXhoiPKtccBvMW.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
@@ -107,6 +107,12 @@ const config: ExpoConfig = {
     "expo-asset",
     "expo-router",
     [
+      "expo-image-picker",
+      {
+        photosPermission: "السماح لـ wm باختيار صورة البروفايل.",
+      },
+    ],
+    [
       "expo-audio",
       {
         microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone.",
@@ -125,9 +131,9 @@ const config: ExpoConfig = {
         image: "./assets/images/splash-icon.png",
         imageWidth: 200,
         resizeMode: "contain",
-        backgroundColor: "#ffffff",
+        backgroundColor: "#1D1A35",
         dark: {
-          backgroundColor: "#000000",
+          backgroundColor: "#1D1A35",
         },
       },
     ],
