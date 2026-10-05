@@ -4,22 +4,27 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { createProduct, deactivateProduct, DEFAULT_PRODUCTS, loadProducts, saveProducts, type Product, updateProduct, uploadProductImage } from "@/lib/catalog";
-import { isSupabaseConfigured } from "@/lib/supabase";
-
-const ADMIN_PASSWORD_HASH = 3868011014;
-function passwordHash(value: string) { let hash = 2166136261; for (const char of value) { hash ^= char.charCodeAt(0); hash = Math.imul(hash, 16777619) >>> 0; } return hash; }
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 const blank: Product = { id: "", name: "", category: "هدايا", price: "0 ج.م", description: "", image: "", accent: "#FFE7B3", discount: 0 };
 
 export default function AdminScreen() {
   const router = useRouter();
   const [unlocked, setUnlocked] = useState(false);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
   const [editing, setEditing] = useState<Product | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => { loadProducts().then(setProducts); }, []);
-  const unlock = () => { if (passwordHash(password) === ADMIN_PASSWORD_HASH) { setUnlocked(true); setError(""); } else setError("كلمة المرور غير صحيحة"); };
+  const unlock = async () => {
+    if (!supabase) { setError("لم يتم إعداد اتصال Supabase"); return; }
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (signInError) { setError("بيانات دخول المدير غير صحيحة"); return; }
+    const { data: admin, error: roleError } = await supabase.rpc("is_admin");
+    if (roleError || !admin) { await supabase.auth.signOut(); setError("هذا الحساب ليس ضمن مديري المتجر"); return; }
+    setUnlocked(true); setError("");
+  };
   const save = async () => {
     if (!editing?.name.trim() || !editing.price.trim()) return;
     try {
@@ -38,9 +43,9 @@ export default function AdminScreen() {
   const remove = (product: Product) => Alert.alert("إخفاء المنتج", `هل تريد إخفاء ${product.name}؟`, [{ text: "إلغاء", style: "cancel" }, { text: "إخفاء", style: "destructive", onPress: async () => { try { if (isSupabaseConfigured) await deactivateProduct(product.id); const next = products.filter((p) => p.id !== product.id); setProducts(next); await saveProducts(next); } catch (error) { Alert.alert("تعذر الإخفاء", "تأكد من صلاحيات التعديل في Supabase."); console.warn("[wm admin] deactivate failed", error); } } }]);
   const chooseImage = async () => { const permission = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (!permission.granted || !editing) return; const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.85 }); if (!result.canceled && result.assets[0]?.uri) setEditing({ ...editing, image: result.assets[0].uri }); };
 
-  if (!unlocked) return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-[#17152A]"><View style={styles.lockWrap}><Text style={styles.lockLogo}>wm</Text><Text style={styles.lockTitle}>للإدارة فقط</Text><Text style={styles.lockHint}>أدخل كلمة مرور الإدارة للتحكم بالمنتجات.</Text><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="كلمة المرور" placeholderTextColor="#9D98B4" style={styles.password} textAlign="right" /><Pressable onPress={unlock} style={styles.primary}><Text style={styles.primaryText}>دخول لوحة الإدارة</Text></Pressable>{error ? <Text style={styles.error}>{error}</Text> : null}<Pressable onPress={() => router.back()}><Text style={styles.back}>العودة للمتجر</Text></Pressable></View></ScreenContainer>;
+  if (!unlocked) return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-[#17152A]"><View style={styles.lockWrap}><Text style={styles.lockLogo}>wm</Text><Text style={styles.lockTitle}>للإدارة فقط</Text><Text style={styles.lockHint}>سجّل بحساب مدير Supabase للوصول إلى المنتجات.</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="البريد الإلكتروني للمدير" placeholderTextColor="#9D98B4" style={styles.password} textAlign="right" /><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="كلمة المرور" placeholderTextColor="#9D98B4" style={styles.password} textAlign="right" /><Pressable onPress={unlock} style={styles.primary}><Text style={styles.primaryText}>دخول لوحة الإدارة</Text></Pressable>{error ? <Text style={styles.error}>{error}</Text> : null}<Pressable onPress={() => router.back()}><Text style={styles.back}>العودة للمتجر</Text></Pressable></View></ScreenContainer>;
 
-  return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-[#F8F7F2]"><ScrollView contentContainerStyle={styles.content}><View style={styles.adminHeader}><View><Text style={styles.kicker}>wm CONTROL</Text><Text style={styles.title}>إدارة المنتجات</Text></View><Pressable onPress={() => { setUnlocked(false); setPassword(""); }}><Text style={styles.lockout}>قفل</Text></Pressable></View><Text style={styles.subtitle}>عدّل العناوين والأسعار والصور والتخفيضات بسهولة.</Text><Pressable onPress={() => setEditing({ ...blank, id: Date.now().toString() })} style={styles.add}><Text style={styles.addText}>＋ إضافة منتج جديد</Text></Pressable>{editing ? <Editor product={editing} setProduct={setEditing} onImage={chooseImage} onSave={save} onCancel={() => setEditing(null)} /> : null}<Text style={styles.count}>{products.length} منتجات</Text>{products.map((product) => <View key={product.id} style={styles.productRow}><Image source={{ uri: product.image }} style={styles.thumb} /><View style={styles.rowCopy}><Text style={styles.rowName}>{product.name}</Text><Text style={styles.rowMeta}>{product.price}{product.discount ? ` · خصم ${product.discount}%` : ""}</Text></View><Pressable onPress={() => setEditing(product)}><Text style={styles.edit}>تعديل</Text></Pressable><Pressable onPress={() => remove(product)}><Text style={styles.delete}>حذف</Text></Pressable></View>)}</ScrollView></ScreenContainer>;
+  return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-[#F8F7F2]"><ScrollView contentContainerStyle={styles.content}><View style={styles.adminHeader}><View><Text style={styles.kicker}>wm CONTROL</Text><Text style={styles.title}>إدارة المنتجات</Text></View><Pressable onPress={async () => { await supabase?.auth.signOut(); setUnlocked(false); setEmail(""); setPassword(""); }}><Text style={styles.lockout}>قفل</Text></Pressable></View><Text style={styles.subtitle}>عدّل العناوين والأسعار والصور والتخفيضات بسهولة.</Text><Pressable onPress={() => setEditing({ ...blank, id: Date.now().toString() })} style={styles.add}><Text style={styles.addText}>＋ إضافة منتج جديد</Text></Pressable>{editing ? <Editor product={editing} setProduct={setEditing} onImage={chooseImage} onSave={save} onCancel={() => setEditing(null)} /> : null}<Text style={styles.count}>{products.length} منتجات</Text>{products.map((product) => <View key={product.id} style={styles.productRow}><Image source={{ uri: product.image }} style={styles.thumb} /><View style={styles.rowCopy}><Text style={styles.rowName}>{product.name}</Text><Text style={styles.rowMeta}>{product.price}{product.discount ? ` · خصم ${product.discount}%` : ""}</Text></View><Pressable onPress={() => setEditing(product)}><Text style={styles.edit}>تعديل</Text></Pressable><Pressable onPress={() => remove(product)}><Text style={styles.delete}>إخفاء</Text></Pressable></View>)}</ScrollView></ScreenContainer>;
 }
 
 function Editor({ product, setProduct, onImage, onSave, onCancel }: { product: Product; setProduct: (p: Product) => void; onImage: () => void; onSave: () => void; onCancel: () => void }) {
