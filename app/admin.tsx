@@ -3,7 +3,8 @@ import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View 
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
-import { DEFAULT_PRODUCTS, loadProducts, saveProducts, type Product } from "@/lib/catalog";
+import { createProduct, deactivateProduct, DEFAULT_PRODUCTS, loadProducts, saveProducts, type Product, updateProduct, uploadProductImage } from "@/lib/catalog";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 const ADMIN_PASSWORD_HASH = 3868011014;
 function passwordHash(value: string) { let hash = 2166136261; for (const char of value) { hash ^= char.charCodeAt(0); hash = Math.imul(hash, 16777619) >>> 0; } return hash; }
@@ -19,8 +20,22 @@ export default function AdminScreen() {
 
   useEffect(() => { loadProducts().then(setProducts); }, []);
   const unlock = () => { if (passwordHash(password) === ADMIN_PASSWORD_HASH) { setUnlocked(true); setError(""); } else setError("كلمة المرور غير صحيحة"); };
-  const save = async () => { if (!editing?.name.trim() || !editing.price.trim()) return; const next = products.some((p) => p.id === editing.id) ? products.map((p) => p.id === editing.id ? editing : p) : [...products, { ...editing, id: Date.now().toString() }]; setProducts(next); await saveProducts(next); setEditing(null); };
-  const remove = (product: Product) => Alert.alert("حذف المنتج", `هل تريد حذف ${product.name}؟`, [{ text: "إلغاء", style: "cancel" }, { text: "حذف", style: "destructive", onPress: async () => { const next = products.filter((p) => p.id !== product.id); setProducts(next); await saveProducts(next); } }]);
+  const save = async () => {
+    if (!editing?.name.trim() || !editing.price.trim()) return;
+    try {
+      if (!isSupabaseConfigured) {
+        const next = products.some((p) => p.id === editing.id) ? products.map((p) => p.id === editing.id ? editing : p) : [...products, { ...editing, id: Date.now().toString() }];
+        setProducts(next); await saveProducts(next); setEditing(null); return;
+      }
+      const existing = products.some((p) => p.id === editing.id);
+      const localImage = /^(file|blob|data):/.test(editing.image);
+      let saved = existing ? await updateProduct(localImage ? { ...editing, image: "" } : editing) : await createProduct(localImage ? { ...editing, image: "" } : editing);
+      if (localImage) saved = await updateProduct({ ...saved, image: await uploadProductImage(editing.image, saved.id) });
+      const next = existing ? products.map((p) => p.id === editing.id ? saved : p) : [saved, ...products];
+      setProducts(next); await saveProducts(next); setEditing(null);
+    } catch (error) { Alert.alert("تعذر الحفظ", "تأكد من تنفيذ سياسات Supabase وصلاحيات جدول products وStorage."); console.warn("[wm admin] save failed", error); }
+  };
+  const remove = (product: Product) => Alert.alert("إخفاء المنتج", `هل تريد إخفاء ${product.name}؟`, [{ text: "إلغاء", style: "cancel" }, { text: "إخفاء", style: "destructive", onPress: async () => { try { if (isSupabaseConfigured) await deactivateProduct(product.id); const next = products.filter((p) => p.id !== product.id); setProducts(next); await saveProducts(next); } catch (error) { Alert.alert("تعذر الإخفاء", "تأكد من صلاحيات التعديل في Supabase."); console.warn("[wm admin] deactivate failed", error); } } }]);
   const chooseImage = async () => { const permission = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (!permission.granted || !editing) return; const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.85 }); if (!result.canceled && result.assets[0]?.uri) setEditing({ ...editing, image: result.assets[0].uri }); };
 
   if (!unlocked) return <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-[#17152A]"><View style={styles.lockWrap}><Text style={styles.lockLogo}>wm</Text><Text style={styles.lockTitle}>للإدارة فقط</Text><Text style={styles.lockHint}>أدخل كلمة مرور الإدارة للتحكم بالمنتجات.</Text><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="كلمة المرور" placeholderTextColor="#9D98B4" style={styles.password} textAlign="right" /><Pressable onPress={unlock} style={styles.primary}><Text style={styles.primaryText}>دخول لوحة الإدارة</Text></Pressable>{error ? <Text style={styles.error}>{error}</Text> : null}<Pressable onPress={() => router.back()}><Text style={styles.back}>العودة للمتجر</Text></Pressable></View></ScreenContainer>;

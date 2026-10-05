@@ -39,5 +39,38 @@ export async function loadProducts(): Promise<Product[]> {
   }
   try { const raw = await AsyncStorage.getItem(KEY); return raw ? JSON.parse(raw) : DEFAULT_PRODUCTS; } catch { return DEFAULT_PRODUCTS; }
 }
+function priceNumber(price: string): number { return Number(price.replace(/[^0-9.]/g, "")) || 0; }
+function productRow(product: Product) { return { name: product.name, category: product.category, description: product.description, price: priceNumber(product.price), discount: product.discount, image_url: product.image, accent: product.accent, is_active: true }; }
+
+export async function createProduct(product: Product): Promise<Product> {
+  if (!supabase) throw new Error("Supabase غير مُعدّ بعد");
+  const { data, error } = await supabase.from("products").insert(productRow(product)).select("*").single();
+  if (error) throw error;
+  return fromSupabaseRow(data);
+}
+
+export async function updateProduct(product: Product): Promise<Product> {
+  if (!supabase) throw new Error("Supabase غير مُعدّ بعد");
+  const { data, error } = await supabase.from("products").update(productRow(product)).eq("id", product.id).select("*").single();
+  if (error) throw error;
+  return fromSupabaseRow(data);
+}
+
+export async function deactivateProduct(id: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase غير مُعدّ بعد");
+  const { error } = await supabase.from("products").update({ is_active: false }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function uploadProductImage(uri: string, productId: string): Promise<string> {
+  if (!supabase) throw new Error("Supabase غير مُعدّ بعد");
+  const response = await fetch(uri);
+  const body = await response.arrayBuffer();
+  const path = `products/${productId}/${Date.now()}.jpg`;
+  const { error } = await supabase.storage.from("product-images").upload(path, body, { contentType: "image/jpeg", upsert: true });
+  if (error) throw error;
+  return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+}
+
 export async function saveProducts(products: Product[]): Promise<void> { await AsyncStorage.setItem(KEY, JSON.stringify(products)); }
 export function discountedPrice(product: Product): string { const match = product.price.match(/[0-9]+(?:\.[0-9]+)?/); if (!match || !product.discount) return product.price; const value = Number(match[0]) * (1 - product.discount / 100); return `${Math.round(value)} ج.م`; }
