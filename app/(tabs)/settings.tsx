@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useThemeContext } from "@/lib/theme-provider";
 import { ProfileMenu } from "@/components/profile-menu";
@@ -9,6 +10,7 @@ import { getProfileAvatar } from "@/lib/profile";
 const SUPPORT_NUMBER = "201095314107";
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { user, logout } = useAuth({ autoFetch: true });
   const { colorScheme, preference, setColorScheme } = useThemeContext();
   const [busy, setBusy] = useState(false);
@@ -16,7 +18,7 @@ export default function SettingsScreen() {
   const dark = colorScheme === "dark";
   useEffect(() => { getProfileAvatar().then(setAvatar); }, []);
   const support = () => Linking.openURL(`https://wa.me/${SUPPORT_NUMBER}?text=${encodeURIComponent("مرحباً wm، أحتاج مساعدة")}`);
-  const handleLogout = async () => { setBusy(true); await logout(); setBusy(false); };
+  const handleLogout = async () => { setBusy(true); await logout(); setBusy(false); router.replace("/login"); };
   return (
     <ScreenContainer edges={["top", "left", "right"]} containerClassName={dark ? "bg-[#17152A]" : "bg-[#F8F7F2]"}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
